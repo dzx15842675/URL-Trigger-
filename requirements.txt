@@ -1,5 +1,0 @@
-flask
-pystray
-pillow
-requests
-pyperclip
