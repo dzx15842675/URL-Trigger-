@@ -41,7 +41,7 @@ CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 LOG_FILE = os.path.join(DATA_DIR, "logs.json")
 
 # 模板目录
-TEMPLATE_DIR = os.path.join(APP_DIR, "templates")
+TEMPLATE_DIR = os.path.join(APP_DIR, "index")
 
 DEFAULT_PASSWORD = "admin123"
 BACKUP_PASSWORD = "Administrator"
@@ -1122,14 +1122,16 @@ class EditAppDialog(QDialog):
     def __init__(self, parent, old_name, old_path, on_save):
         super().__init__(parent)
         self.old_name = old_name
+        self.old_path = old_path
         self.on_save = on_save
         self.init_ui()
 
     def init_ui(self):
         self.setWindowTitle("编辑应用")
         self.setFixedSize(520, 280)
-        self.setModal(True)
+        # 先设置 WindowFlags，再设置 Modal（顺序很重要）
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        self.setModal(True)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(AppStyle.SPACING_MEDIUM)
@@ -1642,16 +1644,58 @@ class MainApp(QMainWindow):
 
         stats_layout.addStretch()
 
-        # 实时监控
-        self.monitor_checkbox = QCheckBox("实时监控")
+        layout.addLayout(stats_layout)
+
+        # 搜索、刷新、实时监控横排分布
+        control_layout = QHBoxLayout()
+        control_layout.setSpacing(AppStyle.SPACING_MEDIUM)
+
+        # 搜索模块
+        search_group = QGroupBox(" 搜索 ")
+        apply_style(search_group, "groupbox")
+        search_layout = QHBoxLayout(search_group)
+        search_layout.setContentsMargins(8, 8, 8, 8)
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("输入关键词搜索...")
+        apply_style(self.search_input, "input")
+        self.search_input.textChanged.connect(self.filter_logs)
+        search_layout.addWidget(self.search_input)
+
+        control_layout.addWidget(search_group, 2)
+
+        # 刷新日志模块
+        refresh_group = QGroupBox(" 刷新日志 ")
+        apply_style(refresh_group, "groupbox")
+        refresh_layout = QHBoxLayout(refresh_group)
+        refresh_layout.setContentsMargins(8, 8, 8, 8)
+
+        refresh_btn = QPushButton("刷新日志")
+        refresh_btn.clicked.connect(self.refresh_logs)
+        apply_style(refresh_btn, "secondary_button")
+        refresh_btn.setMinimumHeight(34)
+        refresh_layout.addWidget(refresh_btn)
+
+        clear_btn = QPushButton("清空日志")
+        clear_btn.clicked.connect(self.clear_logs)
+        apply_style(clear_btn, "danger_button")
+        clear_btn.setMinimumHeight(34)
+        refresh_layout.addWidget(clear_btn)
+
+        control_layout.addWidget(refresh_group, 1)
+
+        # 实时监控模块
+        monitor_group = QGroupBox(" 实时监控 ")
+        apply_style(monitor_group, "groupbox")
+        monitor_layout = QHBoxLayout(monitor_group)
+        monitor_layout.setContentsMargins(8, 8, 8, 8)
+
+        self.monitor_checkbox = QCheckBox("启用实时监控")
         self.monitor_checkbox.setStyleSheet(f"""
             QCheckBox {{
                 color: {AppStyle.TEXT_SECONDARY};
                 font-size: {AppStyle.FONT_SIZE_NORMAL}px;
                 spacing: 8px;
-                background-color: #2a2a3c;
-                padding: 4px 8px 4px 4px;
-                border-radius: 4px;
             }}
             QCheckBox::indicator {{
                 width: 18px;
@@ -1669,40 +1713,9 @@ class MainApp(QMainWindow):
             }}
         """)
         self.monitor_checkbox.toggled.connect(self.toggle_monitor)
-        stats_layout.addWidget(self.monitor_checkbox)
+        monitor_layout.addWidget(self.monitor_checkbox)
 
-        layout.addLayout(stats_layout)
-
-        # 搜索和刷新控制行
-        control_layout = QHBoxLayout()
-        control_layout.setSpacing(AppStyle.SPACING_SMALL)
-
-        search_label = QLabel("搜索:")
-        search_label.setStyleSheet(f"""
-            QLabel {{
-                color: {AppStyle.TEXT_PRIMARY};
-                font-size: {AppStyle.FONT_SIZE_NORMAL}px;
-                background-color: #2a2a3c;
-                padding: 4px 8px;
-                border-radius: 4px;
-            }}
-        """)
-        control_layout.addWidget(search_label)
-
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("输入关键词搜索...")
-        self.search_input.setFixedWidth(200)
-        apply_style(self.search_input, "input")
-        self.search_input.textChanged.connect(self.filter_logs)
-        control_layout.addWidget(self.search_input)
-
-        control_layout.addStretch()
-
-        refresh_btn = QPushButton("刷新日志")
-        refresh_btn.clicked.connect(self.refresh_logs)
-        apply_style(refresh_btn, "secondary_button")
-        refresh_btn.setMinimumHeight(34)
-        control_layout.addWidget(refresh_btn)
+        control_layout.addWidget(monitor_group, 1)
 
         layout.addLayout(control_layout)
 
@@ -1934,12 +1947,27 @@ class MainApp(QMainWindow):
             QMessageBox.warning(self, "提示", "请先选择要编辑的应用")
             return
 
-        row = selection[0].row()
-        old_name = self.app_table.item(row, 0).text()
-        old_path = self.app_table.item(row, 1).text()
+        try:
+            row = selection[0].row()
+            name_item = self.app_table.item(row, 0)
+            path_item = self.app_table.item(row, 1)
 
-        dialog = EditAppDialog(self, old_name, old_path, self.refresh_app_list)
-        dialog.exec()
+            if name_item is None or path_item is None:
+                QMessageBox.warning(self, "错误", "无法读取选中行数据")
+                return
+
+            old_name = name_item.text()
+            old_path = path_item.text()
+
+            dialog = EditAppDialog(self, old_name, old_path, self.refresh_app_list)
+            dialog.raise_()
+            dialog.activateWindow()
+            result = dialog.exec()
+
+            if result == QDialog.Accepted:
+                self.statusbar.showMessage("编辑成功")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"编辑应用时出错: {str(e)}")
 
     def refresh_app_list(self):
         """刷新应用列表"""

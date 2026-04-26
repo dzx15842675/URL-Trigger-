@@ -1,8 +1,8 @@
 {
     "app_path": "E:/Learning tools/\u98de\u4e66/Feishu/Feishu.exe",
     "admin_password": "admin123",
-    "port": 8080,
-    "auto_start_web": true,
+    "port": 3333,
+    "auto_start_web": false,
     "apps": [
         {
             "name": "\u98de\u4e66",
@@ -10,7 +10,7 @@
         },
         {
             "name": "\u516b\u722a\u9c7c",
-            "path": "E:\\Learning tools\\\u516b\u722a\u9c7cRPA\\OctopusRPA.Studio.exe"
+            "path": "E:/Learning tools/\u516b\u722a\u9c7cRPA/OctopusRPA.Studio.exe"
         }
     ],
     "secret_key": "d71335d8165e87c24d88e18867a6101b49b1bf93c37a8e81"

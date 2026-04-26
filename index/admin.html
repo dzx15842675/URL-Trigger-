@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - URL Trigger</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--bg-card); border-right: 1px solid var(--border); padding: 24px 0; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; }
+        .sidebar-header { padding: 0 24px 24px; border-bottom: 1px solid var(--border); }
+        .sidebar-header h1 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .sidebar-header h1 svg { width: 28px; height: 28px; fill: var(--primary); }
+        .sidebar-header p { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+        .sidebar-nav { flex: 1; padding: 16px 12px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: var(--text-muted); cursor: pointer; transition: all 0.2s; margin-bottom: 4px; font-size: 14px; font-weight: 500; }
+        .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+        .nav-item.active { background: linear-gradient(135deg, rgba(102,126,234,0.2) 0%, rgba(118,75,162,0.2) 100%); color: var(--primary); }
+        .nav-item svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
+        .sidebar-footer { padding: 16px 24px; border-top: 1px solid var(--border); }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .avatar { width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary), #764ba2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
+        .user-details { flex: 1; }
+        .user-details .name { font-size: 14px; font-weight: 500; }
+        .user-details .role { font-size: 12px; color: var(--text-muted); }
+        .logout-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1); color: var(--danger); }
+        .logout-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+        /* Main Content */
+        .main { flex: 1; margin-left: 260px; padding: 32px; }
+        .page-header { margin-bottom: 32px; }
+        .page-header h2 { font-size: 28px; font-weight: 700; }
+        .page-header p { color: var(--text-muted); margin-top: 4px; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 32px; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+        .stat-card .label { color: var(--text-muted); font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+        .stat-card .value { font-size: 24px; font-weight: 700; color: var(--text); word-break: break-all; }
+        .stat-card .action { margin-top: 12px; }
+        .stat-card .action button { width: 100%; padding: 8px; background: rgba(102,126,234,0.15); border: 1px solid rgba(102,126,234,0.3); border-radius: 8px; color: var(--primary); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .stat-card .action button:hover { background: rgba(102,126,234,0.25); }
+
+        /* Pages */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* Card */
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+        .card-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .card-title svg { width: 22px; height: 22px; fill: var(--primary); }
+
+        /* Table */
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 16px; background: var(--bg); color: var(--text-muted); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 14px 16px; border-top: 1px solid var(--border); font-size: 14px; }
+        tr:hover td { background: var(--bg-hover); }
+        code { background: var(--bg); padding: 4px 8px; border-radius: 6px; font-size: 13px; color: var(--primary); }
+
+        /* Buttons */
+        .btn { padding: 10px 18px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn svg { width: 16px; height: 16px; fill: currentColor; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), #764ba2); color: white; box-shadow: 0 4px 12px rgba(102,126,234,0.3); }
+        .btn-primary:hover { box-shadow: 0 6px 20px rgba(102,126,234,0.4); transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+        .btn-danger:hover { background: rgba(239,68,68,0.25); }
+        .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-success { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+        .btn-success:hover { background: rgba(16,185,129,0.25); }
+        .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-ghost:hover { background: var(--bg-hover); color: var(--text); }
+
+        /* Form */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; color: var(--text-muted); font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="password"] { width: 100%; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; transition: all 0.2s; }
+        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
+        .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+        .form-row .form-group { flex: 1; min-width: 150px; margin-bottom: 0; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+
+        /* Status Badge */
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+        .status-online { background: rgba(16,185,129,0.15); color: var(--success); }
+        .status-offline { background: rgba(239,68,68,0.15); color: var(--danger); }
+        .pulse { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text); padding: 16px 24px; border-radius: 12px; display: none; z-index: 1000; box-shadow: 0 10px 40px rgba(0,0,0,0.3); font-size: 14px; }
+        .toast.show { display: block; animation: slideUp 0.3s; }
+        .toast.success { border-color: rgba(16,185,129,0.3); }
+        .toast.error { border-color: rgba(239,68,68,0.3); }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 32px; width: 90%; max-width: 450px; box-shadow: 0 25px 50px rgba(0,0,0,0.4); }
+        .modal h3 { font-size: 20px; margin-bottom: 24px; text-align: center; }
+        .modal-btns { display: flex; gap: 12px; margin-top: 20px; }
+        .modal-btns button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+        /* Empty state */
+        .empty { text-align: center; padding: 40px; color: var(--text-muted); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { width: 72px; }
+            .sidebar-header p, .nav-item span, .user-details, .sidebar-footer { display: none; }
+            .sidebar-header h1 { justify-content: center; }
+            .nav-item { justify-content: center; padding: 12px; }
+            .main { margin-left: 72px; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1><svg viewBox="0 0 24 24"><path d="M13 3L4 14h7l-2 7 9-11h-7l2-7z"/></svg> URL Trigger</h1>
+            <p>后台管理系统</p>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+                <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                <span>数据概览</span>
+            </div>
+            <div class="nav-item" data-page="logs" onclick="switchPage('logs')">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+                <span>访问日志</span>
+            </div>
+            <div class="nav-item" data-page="apps" onclick="switchPage('apps')">
+                <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+                <span>应用管理</span>
+            </div>
+            <div class="nav-item" data-page="settings" onclick="switchPage('settings')">
+                <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21 0 .47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22 0-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                <span>系统设置</span>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="avatar">A</div>
+                <div class="user-details">
+                    <div class="name">Admin</div>
+                    <div class="role">管理员</div>
+                </div>
+                <a href="/logout" class="logout-btn" title="退出登录">
+                    <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page active">
+            <div class="page-header">
+                <h2>数据概览</h2>
+                <p>查看服务运行状态与访问统计</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">局域网 IP</div>
+                    <div class="value" id="localIp">加载中...</div>
+                    <div class="action"><button onclick="copyToClipboard(document.getElementById('localIp').textContent, 'IP')">复制 IP</button></div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">总访问次数</div>
+                    <div class="value" id="totalVisits">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">服务端口</div>
+                    <div class="value" id="serverPort">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">后台网址</div>
+                    <div class="value" style="font-size:14px;" id="adminUrl">加载中...</div>
+                    <div class="action"><button onclick="copyToClipboard(document.getElementById('adminUrl').textContent, '网址')">复制网址</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    最近访问记录
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>时间</th><th>IP 地址</th><th>访问路径</th><th>操作</th></tr></thead>
+                        <tbody id="recentLogs"><tr><td colspan="4" class="empty">加载中...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Page -->
+        <div id="page-logs" class="page">
+            <div class="page-header">
+                <h2>访问日志</h2>
+                <p>查看所有访问记录详情</p>
+            </div>
+            <div class="card">
+                <div class="form-row" style="margin-bottom:20px;">
+                    <input type="text" id="searchInput" placeholder="搜索 IP 或路径..." style="flex:1; padding:12px 16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; color:var(--text);">
+                    <button class="btn btn-primary" onclick="loadLogs()">
+                        <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                        刷新
+                    </button>
+                    <button class="btn btn-danger" onclick="clearLogs()">
+                        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        清空
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>时间</th><th>IP 地址</th><th>访问路径</th><th>操作</th></tr></thead>
+                        <tbody id="logTable"><tr><td colspan="4" class="empty">暂无日志</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Apps Page -->
+        <div id="page-apps" class="page">
+            <div class="page-header">
+                <h2>应用管理</h2>
+                <p>管理可通过 /open/应用名 访问的应用</p>
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    添加应用
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>应用名称</label>
+                        <input type="text" id="appName" placeholder="例如: notepad">
+                    </div>
+                    <div class="form-group" style="flex:2;">
+                        <label>程序路径</label>
+                        <input type="text" id="appPath" placeholder="例如: C:\\Windows\\notepad.exe">
+                    </div>
+                    <div class="form-group" style="flex:0;">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-ghost" onclick="browseAppPath()">浏览</button>
+                    </div>
+                    <div class="form-group" style="flex:0;">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-primary" onclick="addApp()">添加应用</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+                    应用列表
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>应用名称</th><th>程序路径</th><th>访问地址</th><th>操作</th></tr></thead>
+                        <tbody id="appTable"><tr><td colspan="4" class="empty">暂无应用</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="page-settings" class="page">
+            <div class="page-header">
+                <h2>系统设置</h2>
+                <p>配置服务参数与安全选项</p>
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21 0 .47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22 0-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    服务配置
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>服务端口</label>
+                        <input type="number" id="serverPort" value="">
+                    </div>
+                    <div class="form-group" style="flex:0;">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-primary" onclick="savePort()">保存端口</button>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:20px;">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="autoStartWeb">
+                        <label for="autoStartWeb" style="margin:0;">启动 GUI 时自动运行 Web 服务</label>
+                    </div>
+                </div>
+                <button class="btn btn-ghost" onclick="saveAutoStart()">保存自动启动设置</button>
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M13 3L4 14h7l-2 7 9-11h-7l2-7z"/></svg>
+                    Web 服务控制
+                </div>
+                <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                    <span id="serverStatus" class="status-badge">
+                        <span class="pulse"></span>
+                        <span id="serverStatusText">检测中...</span>
+                    </span>
+                    <button class="btn btn-success" id="startServerBtn" onclick="startServer()">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        启动服务
+                    </button>
+                    <button class="btn btn-danger" id="stopServerBtn" onclick="stopServer()">
+                        <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+                        停止服务
+                    </button>
+                </div>
+                <p style="color:var(--text-muted); font-size:13px; margin-top:16px;">注意：通过 Web 界面启停服务会影响 GUI 端的状态显示</p>
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
+                    修改密码
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>当前密码</label>
+                        <input type="password" id="currentPassword">
+                    </div>
+                    <div class="form-group">
+                        <label>新密码</label>
+                        <input type="password" id="newPassword">
+                    </div>
+                    <div class="form-group">
+                        <label>确认新密码</label>
+                        <input type="password" id="confirmPassword">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="changePassword()">修改密码</button>
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                    备用密码
+                </div>
+                <p style="color:var(--text-muted); font-size:14px;">备用密码: <strong style="color:var(--text);" id="backupPassword">Administrator</strong></p>
+                <p style="color:var(--text-muted); font-size:13px; margin-top:8px;">用于忘记密码时的身份验证</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit App Modal -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal">
+            <h3>编辑应用</h3>
+            <div class="form-group">
+                <label>应用名称</label>
+                <input type="text" id="editAppName">
+            </div>
+            <div class="form-group">
+                <label>程序路径</label>
+                <input type="text" id="editAppPath">
+            </div>
+            <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">访问地址: <code id="editAppUrl"></code></p>
+            <div class="modal-btns">
+                <button class="btn-ghost" onclick="closeEditModal()">取消</button>
+                <button class="btn-primary" onclick="saveEditApp()">保存</button>
+            </div>
+            <p id="editMsg" style="text-align:center; margin-top:16px; font-size:14px; display:none;"></p>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        var currentEditName = '';
+        var configData = {};
+
+        function copyToClipboard(text, label) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showToast(label + ' 已复制', 'success');
+                }).catch(function() {
+                    fallbackCopy(text, label);
+                });
+            } else {
+                fallbackCopy(text, label);
+            }
+        }
+
+        function fallbackCopy(text, label) {
+            try {
+                var input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast(label + ' 已复制', 'success');
+            } catch(e) {
+                showToast('复制失败', 'error');
+            }
+        }
+
+        function switchPage(pageId) {
+            var pages = document.querySelectorAll('.page');
+            var navs = document.querySelectorAll('.nav-item');
+            for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
+            for (var i = 0; i < navs.length; i++) navs[i].classList.remove('active');
+            var page = document.getElementById('page-' + pageId);
+            var nav = document.querySelector('.nav-item[data-page="' + pageId + '"]');
+            if (page) page.classList.add('active');
+            if (nav) nav.classList.add('active');
+        }
+
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = msg;
+            t.className = 'toast show ' + type;
+            setTimeout(function() { t.className = 'toast'; }, 3000);
+        }
+
+        function loadLogs() {
+            fetch('/api/logs').then(function(r) { return r.json(); }).then(function(data) {
+                var html = '';
+                if (data.logs && data.logs.length > 0) {
+                    for (var i = 0; i < data.logs.length; i++) {
+                        var log = data.logs[i];
+                        html += '<tr><td>' + log.time + '</td><td>' + log.ip + '</td><td>' + log.path + '</td><td>' + log.action + '</td></tr>';
+                    }
+                } else { html = '<tr><td colspan="4" class="empty">暂无日志</td></tr>'; }
+                document.getElementById('logTable').innerHTML = html;
+            }).catch(function(err) { console.error('加载日志失败:', err); });
+        }
+
+        function loadRecentLogs() {
+            fetch('/api/logs?limit=10').then(function(r) { return r.json(); }).then(function(data) {
+                var html = '';
+                if (data.logs && data.logs.length > 0) {
+                    for (var i = 0; i < data.logs.length; i++) {
+                        var log = data.logs[i];
+                        html += '<tr><td>' + log.time + '</td><td>' + log.ip + '</td><td>' + log.path + '</td><td>' + log.action + '</td></tr>';
+                    }
+                } else { html = '<tr><td colspan="4" class="empty">暂无记录</td></tr>'; }
+                var el = document.getElementById('recentLogs');
+                if (el) el.innerHTML = html;
+            }).catch(function(err) { console.error('加载最近日志失败:', err); });
+        }
+
+        function clearLogs() {
+            fetch('/api/logs', {method: 'DELETE'}).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success) { showToast('日志已清空'); loadLogs(); loadRecentLogs(); }
+            });
+        }
+
+        var searchEl = document.getElementById('searchInput');
+        if (searchEl) {
+            searchEl.addEventListener('input', function() {
+                var keyword = this.value.toLowerCase();
+                var rows = document.querySelectorAll('#logTable tr');
+                for (var i = 0; i < rows.length; i++) {
+                    rows[i].style.display = rows[i].textContent.toLowerCase().indexOf(keyword) !== -1 ? '' : 'none';
+                }
+            });
+        }
+
+        function loadApps() {
+            fetch('/api/apps').then(function(r) { return r.json(); }).then(function(data) {
+                var html = '';
+                if (data.apps && data.apps.length > 0) {
+                    for (var i = 0; i < data.apps.length; i++) {
+                        var app = data.apps[i];
+                        html += '<tr>';
+                        html += '<td><strong>' + app.name + '</strong></td>';
+                        html += '<td style="color:var(--text-muted);">' + app.path + '</td>';
+                        html += '<td><code>/open/' + app.name + '</code></td>';
+                        html += '<td><button class="btn btn-ghost" onclick="editApp(\'' + app.name + '\')" style="padding:6px 12px; font-size:13px;">编辑</button> ';
+                        html += '<button class="btn btn-danger" onclick="deleteApp(\'' + app.name + '\')" style="padding:6px 12px; font-size:13px;">删除</button></td>';
+                        html += '</tr>';
+                    }
+                } else { html = '<tr><td colspan="4" class="empty">暂无应用</td></tr>'; }
+                document.getElementById('appTable').innerHTML = html;
+            }).catch(function(err) { console.error('加载应用列表失败:', err); });
+        }
+
+        function addApp() {
+            var name = document.getElementById('appName').value.trim();
+            var path = document.getElementById('appPath').value.trim();
+            if (!name) { showToast('请输入应用名称', 'error'); return; }
+            if (!path) { showToast('请输入程序路径', 'error'); return; }
+            fetch('/api/apps', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: name, path: path})})
+            .then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success) {
+                    showToast(d.message);
+                    document.getElementById('appName').value = '';
+                    document.getElementById('appPath').value = '';
+                    loadApps();
+                } else { showToast(d.message, 'error'); }
+            }).catch(function(err) { showToast('添加失败', 'error'); });
+        }
+
+        function deleteApp(name) {
+            fetch('/api/apps/' + name, {method: 'DELETE'})
+            .then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success) { showToast(d.message); loadApps(); }
+                else { showToast(d.message, 'error'); }
+            }).catch(function(err) { showToast('删除失败', 'error'); });
+        }
+
+        function editApp(name) {
+            fetch('/api/apps').then(function(r) { return r.json(); }).then(function(data) {
+                var app = null;
+                for (var i = 0; i < data.apps.length; i++) {
+                    if (data.apps[i].name === name) { app = data.apps[i]; break; }
+                }
+                if (!app) return;
+                currentEditName = name;
+                document.getElementById('editAppName').value = app.name;
+                document.getElementById('editAppPath').value = app.path;
+                document.getElementById('editAppUrl').textContent = '/open/' + app.name;
+                document.getElementById('editMsg').style.display = 'none';
+                document.getElementById('editModal').classList.add('show');
+            });
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) closeEditModal();
+        });
+
+        function saveEditApp() {
+            var newName = document.getElementById('editAppName').value.trim();
+            var path = document.getElementById('editAppPath').value.trim();
+            var msg = document.getElementById('editMsg');
+            if (!newName) { msg.style.display = 'block'; msg.style.color = 'var(--danger)'; msg.textContent = '名称不能为空'; return; }
+            if (!path) { msg.style.display = 'block'; msg.style.color = 'var(--danger)'; msg.textContent = '路径不能为空'; return; }
+            fetch('/api/apps/' + currentEditName, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: newName, path: path})})
+            .then(function(r) { return r.json(); }).then(function(d) {
+                msg.style.display = 'block';
+                if (d.success) {
+                    msg.style.color = 'var(--success)'; msg.textContent = '保存成功';
+                    setTimeout(function() { closeEditModal(); loadApps(); }, 1000);
+                } else { msg.style.color = 'var(--danger)'; msg.textContent = d.message; }
+            });
+        }
+
+        function browseAppPath() {
+            var commonPaths = [
+                'C:\\Windows\\notepad.exe',
+                'C:\\Windows\\system32\\cmd.exe',
+                'C:\\Windows\\explorer.exe',
+                'C:\\Windows\\system32\\mspaint.exe',
+                'C:\\Windows\\system32\\calc.exe'
+            ];
+            var path = prompt('请输入程序完整路径：\n\n' + commonPaths.join('\n'), '');
+            if (path) document.getElementById('appPath').value = path;
+        }
+
+        function savePort() {
+            var port = parseInt(document.getElementById('serverPort').value);
+            if (!port || port < 1 || port > 65535) { showToast('请输入有效端口号(1-65535)', 'error'); return; }
+            fetch('/api/config/port', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({port: port})})
+            .then(function(r) { return r.json(); }).then(function(d) { showToast(d.message); });
+        }
+
+        function saveAutoStart() {
+            var autoStart = document.getElementById('autoStartWeb').checked;
+            fetch('/api/config/auto_start', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({auto_start: autoStart})})
+            .then(function(r) { return r.json(); }).then(function(d) { showToast(d.message); });
+        }
+
+        function startServer() {
+            fetch('/api/server/start', {method: 'POST'})
+            .then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success) { showToast('服务已启动'); loadConfig(); }
+                else { showToast(d.message, 'error'); }
+            });
+        }
+
+        function stopServer() {
+            fetch('/api/server/stop', {method: 'POST'})
+            .then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success) { showToast('服务已停止'); loadConfig(); }
+                else { showToast(d.message, 'error'); }
+            });
+        }
+
+        function changePassword() {
+            var cp = document.getElementById('currentPassword').value;
+            var np = document.getElementById('newPassword').value;
+            var cfp = document.getElementById('confirmPassword').value;
+            if (np !== cfp) { showToast('两次密码不一致', 'error'); return; }
+            fetch('/api/change_password', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({current_password: cp, new_password: np})})
+            .then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success) {
+                    showToast('密码修改成功');
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                } else { showToast(d.message, 'error'); }
+            });
+        }
+
+        function loadConfig() {
+            fetch('/api/status').then(function(r) { return r.json(); }).then(function(data) {
+                var port = data.port || 3333;
+                configData.port = port;
+                
+                // Use server-provided local IP (real LAN IP like 192.168.x.x)
+                var localIp = '{{ local_ip }}' || '127.0.0.1';
+                var adminPort = {{ port }} || port;
+                
+                document.getElementById('localIp').textContent = localIp;
+                document.getElementById('adminUrl').textContent = 'http://' + localIp + ':' + adminPort + '/admin';
+                document.getElementById('serverPort').value = adminPort;
+                document.getElementById('serverPort').textContent = adminPort;
+                
+                // Check server status
+                fetch('/api/logs?limit=1').then(function(r) { return r.json(); }).then(function(logData) {
+                    document.getElementById('totalVisits').textContent = logData.logs ? logData.logs.length : 0;
+                });
+            });
+        }
+
+        // Init
+        try {
+            loadConfig();
+            loadRecentLogs();
+            loadApps();
+        } catch(e) {
+            console.error('Init error:', e);
+        }
+    </script>
+</body>
+</html>

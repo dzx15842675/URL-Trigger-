@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>应用启动页 - URL Trigger</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 40px 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; color: white; margin-bottom: 30px; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .app-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s, box-shadow 0.2s; }
+        .app-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        .app-name { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 15px; }
+        .app-btn { display: inline-block; width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 500; text-decoration: none; transition: opacity 0.2s; }
+        .app-btn:hover { opacity: 0.9; }
+        .copy-btn { display: inline-block; width: 100%; padding: 8px 15px; background: #f0f0f0; color: #555; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; font-size: 13px; margin-top: 10px; transition: background 0.2s; }
+        .copy-btn:hover { background: #e0e0e0; }
+        .empty-state { text-align: center; color: white; font-size: 18px; padding: 40px; background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #2ecc71; color: white; padding: 15px 25px; border-radius: 8px; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .toast.show { display: block; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>应用启动页</h1>
+        <div id="appContainer"></div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        function copyUrl(path) {
+            const url = window.location.origin + path;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('链接已复制到剪贴板');
+            }).catch(() => {
+                let input = document.createElement('input');
+                input.value = url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast('链接已复制到剪贴板');
+            });
+        }
+
+        function showToast(msg) {
+            let toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Check login status first
+        fetch('/api/check_login')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.logged_in) {
+                    // Not logged in, show alert popup and stop loading
+                    alert('页面加载失败,请登录管理员账号后重试!!!');
+                    document.getElementById('appContainer').innerHTML = '<div class="empty-state"><p>页面加载失败，请登录管理员账号后重试!!!</p><p style="margin-top: 10px; font-size: 14px;"><a href="/login" style="color: white; text-decoration: underline;">前往登录</a></p></div>';
+                    return;
+                }
+                // Logged in, load apps
+                loadApps();
+            })
+            .catch(err => {
+                document.getElementById('appContainer').innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
+            });
+
+        function loadApps() {
+            fetch('/api/apps')
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('appContainer');
+                    const apps = data.apps || [];
+                    
+                    if (apps.length === 0) {
+                        container.innerHTML = '<div class="empty-state"><p>暂无可用应用</p><p style="margin-top: 10px; font-size: 14px;">请先在后台管理中添加应用</p></div>';
+                        return;
+                    }
+                    
+                    let html = '<div class="app-grid">';
+                    apps.forEach(app => {
+                        html += `
+                            <div class="app-card">
+                                <div class="app-name">${app.name}</div>
+                                <a href="/open/${app.name}" class="app-btn">启动 ${app.name}</a>
+                                <button class="copy-btn" onclick="copyUrl('/open/${app.name}')">复制访问链接</button>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                })
+                .catch(err => {
+                    document.getElementById('appContainer').innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
+                });
+        }
+    </script>
+</body>
+</html>
